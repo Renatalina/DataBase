@@ -1,0 +1,9 @@
+Declare @cnt int
+set @cnt = 0
+while(@cnt < 100000)
+begin
+ insert tst values(@cnt, rand());
+ set @cnt = @cnt + 1
+end
+
+select * from tst where ID = 99999

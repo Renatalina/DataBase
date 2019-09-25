@@ -1,0 +1,16 @@
+CREATE TABLE Buys(
+id int primary key identity,
+cardNumber bigint not null ,--номер карты
+shopName nvarchar(20)not null,--инфо о магазине
+total money not null, --сумма чека
+dateIn smalldatetime not null --дата покупки
+)
+CREATE TABLE BadBuys(
+id int primary key identity,
+cardNumber bigint not null ,--номер карты
+shopName nvarchar(20)not null,--инфо о магазине
+total money not null, --сумма чека
+dateIn smalldatetime not null --дата покупки
+)
+'2018-09-26'
+GetDate()

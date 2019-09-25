@@ -1,0 +1,57 @@
+DROP TABLE CreditsList
+go
+CREATE TABLE CreditsList(
+inn int primary key not null,
+cardNumber bigint not null default (0) unique check(cardNumber>=1000),
+fio nvarchar(50)not null,
+bank nvarchar(50)not null 
+default (N'Кредит банк,г. Харьков, отделение №24'),
+creditLimit money not null check(creditLimit>=1000),
+currentLimit money not null default(0),
+check (currentLimit<=creditLimit)
+)
+go
+ALTER PROC TakeCredit
+@inn int,@fio nvarchar(50),@money money
+AS
+--проверяем черные списки
+	if NOT EXISTS (SELECT BL.inn FROM dbo.BlackList BL WHERE BL.inn=@inn)
+BEGIN
+--проверяем есть ли выданные кредиты
+	if NOT EXISTS (SELECT CL.inn FROM dbo.CreditsList CL WHERE CL.inn=@inn)
+		BEGIN
+		-----генерация номера карт
+--если кредитов нет, то генерируем номер карты
+		DECLARE @cardNumber bigint 
+--определяем номер последней выданной карты
+		SELECT @cardNumber=(SELECT MAX(CL.cardNumber)FROM dbo.CreditsList CL)
+--если это первый кредит, отделение новое
+--то записей в таблице нет
+		if (@cardNumber is null)
+		SET @cardNumber=1000000000000000 --первый номер карты будет равен
+		ELSE 
+		SET @cardNumber= @cardNumber + 1 --каждый следующий на 1 больше
+		--генерация номера карт
+--добавляем в список выданных кредитов
+		INSERT INTO dbo.CreditsList(inn,cardNumber,fio,creditLimit)
+		VALUES (@inn,@cardNumber,@fio,@money)
+		print 'заявка на кредит одобрена'
+
+	END
+ELSE
+		BEGIN
+		print 'у вас есть незакрытый кредит'
+		SELECT CL.inn, CL.fio,CL.currentLimit,CL.creditLimit
+		FROM dbo.CreditsList CL
+		 WHERE CL.inn=@inn
+		END
+END
+ELSE
+BEGIN
+	print N'заявка отклонена, мы не работаем с черным списком'
+	SELECT BL.inn,BL.fio,BL.bank FROM dbo.BlackList BL WHERE BL.inn=@inn
+END
+
+exec TakeCredit 1000,N'Петров Иван Васильевич',20000
+exec TakeCredit 1003,N'Сидоров Иван Петрович',50000
+exec TakeCredit 1003,N'Сидоров Иван Петрович',50000

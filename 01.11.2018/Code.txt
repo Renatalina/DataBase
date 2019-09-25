@@ -1,0 +1,163 @@
+БД library
+
+-- Вывести максимальное количество страниц по категориям
+SELECT Name,(SELECT Max(Pages) FROM Books WHERE Id_Category = C.Id) AS Максимум
+FROM Categories AS C;
+
+-- Вывести самые старые книги по категориям.
+SELECT B.Name AS Книга,C.Name AS Категория,YearPress AS Год
+FROM Books AS B, Categories AS C
+WHERE B.Id_Category=C.Id AND YearPress=
+(
+SELECT MIN(YearPress)
+FROM Books AS B1
+WHERE B1.Id_Category=C.Id
+)
+
+///// нет БД
+-- название групп, студенты которых получают максимальную стипендию
+SELECT GroupName
+FROM Groups
+WHERE Id IN (SELECT GroupId
+		   FROM Students
+	   WHERE Grants = (SELECT MAX(Grants) FROM Students));
+
+--среднее значение месяца рождения которых больше среднего значения месяца рождения студентов
+SELECT LastName, FirstName
+FROM Teachers
+GROUP BY LastName, FirstName
+HAVING AVG(MONTH(BirthDate))>
+(SELECT AVG(MONTH(BirthDate)) FROM Students);
+
+
+DELETE FROM Students WHERE Id IN (SELECT ...)
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+      People
+-----------------------
+ID	|  int
+FName	|  varchar(20)
+LName	|  varchar(20)
+Age	|  int
+Phone	|  varchar(20)
+
+    Employees
+-----------------------
+ID	|  int		? IDENTITY ?
+LName	|  varchar(20)
+Phone	|  varchar(20)	? bigint ?
+
+Заполнение значениями существующей таблицы
+
+INSERT INTO Employees
+SELECT LName, Phone
+FROM People
+WHERE Age > 18 AND Age < 60
+
+Создание новой таблицы со значениями
+
+SELECT * INTO Emloyees
+FROM People
+
+--------------------------------------------------------
+
+DELETE FROM Students
+WHERE Age > 18 AND Age < 60
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+--Показать издательства и самую старую книгу для каждого из них.
+
+SELECT Press.Name AS 'Издательство', Books.Name AS 'Книга', PressMin.MinYear AS 'Год'
+FROM Press, Books,
+				(SELECT P.[Name] AS PressName, MIN(YearPress) AS MinYear
+				 FROM Press AS P, Books AS B
+				 WHERE P.Id=B.Id_Press
+				 GROUP BY P.Name) AS PressMin
+WHERE Press.Id=Books.Id_Press AND Press.Name=PressMin.PressName 
+		AND Books.YearPress=PressMin.MinYear;
+
+--------------------------------------------------------------------------
+
+--необходимо отобразить всех посетителей библиотеки (и студентов и преподавателей) не вернувших книги 
+-- и книги, которые они брали 
+
+SELECT FirstName + ' ' + LastName AS 'Посетитель', Name AS 'Название'
+FROM Students AS S JOIN S_Cards AS SC ON S.Id=SC.Id_Student
+		JOIN Books AS B ON B.Id=SC.Id_Book
+WHERE SC.DateIn IS NULL
+UNION ALL
+SELECT FirstName + ' ' + LastName, Name
+FROM Teachers AS T JOIN T_Cards AS TC ON T.Id=TC.Id_Teacher
+		JOIN Books AS B ON B.Id=TC.Id_Book
+WHERE TC.DateIn IS NULL
+ORDER BY 1 ASC, 2 DESC
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+•	Atomicity (атомарность) – определяет целостность транзакции, то есть для успешного завершения транзакции должны выполниться либо все операции, составляющие данную транзакцию, либо ни одна из них;
+•	Consistency (согласованность) – это свойство обеспечивает целостность информации независимо от того успешно завершилась транзакция или нет;
+•	Isolation (изолированность) – означает, что все транзакции выполняются параллельно и не могут оказывать влияния друг на друга;
+•	Durability (надежность) – обеспечивает сохранность всех данных после фиксации успешно выполненной транзакции, независимо от возможных сбоев системы.
+
+Существует три типа транзакций:
+•	явные транзакции, которые характеризуются явным указанием начала транзакции (BEGIN TRAN или BEGIN TRANSACTION), ее фиксации в случае успешного завершения (COMMIT TRAN или COMMIT TRANSACTION) и с возможностью прерывания (отката) транзакции при возникновении определенного условия (ROLLBACK TRAN или ROLLBACK TRANSACTION);
+•	неявные транзакции – транзакции, для которых начало и конец не указываются явным образом, такие транзакции происходят при выполнении следующих инструкций – ALTER TABLE, CREATE, DROP, SELECT, INSERT, DELETE, UPDATE, GRANT, REVOKE, OPEN, FETCH, TRUNCATE TABLE – каждая из них выполняется как отдельная транзакция;
+•	автоматические транзакции характерны тем что каждая успешно выполненная операция фиксируется, в противном случае откатывается, для того чтобы перейти в этот режим необходимо выполнить команду SET IMPLICIT_TRANSACTION с параметром OFF, для выхода SET IMPLICIT_TRANSACTION ON.
+
+существуют четыре возможные нарушения при работе с базами данных:
+•	чтение незафиксированных данных;
+•	неповторяемое чтение;
+•	фантомы;
+•	потерянные обновления.
+
+Блокировки, применяемые при выполнении транзакций, препятствуют взаимодействию с объектами другим процессам, тем самым могут служить причиной взаимной изоляции транзакций. Для управления степенью взаимной изоляции транзакций существуют четыре уровня изолированности транзакций:
+•	READ UNCOMMITTED – позволяет считывать данные, которые были изменены, но не были зафиксированы (не предотвращает ни одно из возможных нарушений);
+•	READ COMMITTED – не позволяет считывать данные, которые были изменены, но не были зафиксированы (используется по умолчанию) (предотвращает чтение незафиксированных данных);
+•	REPEATABLE READ – никакая транзакция не может изменять данные, считанные текущей транзакцией до ее завершения (предотвращает чтение незафиксированных данных и неповторяемое чтение);
+•	SERIALIZABLE – любые другие транзакции не могут вставлять/изменять/удалять данные, которые попадают в диапазон записей, удовлетворяющих условию, которое задано в операторе WHERE текущей транзакции (предотвращает чтение незафиксированных данных, неповторяемое чтение и фантомы).
+
+	Чтение незафиксированных данных:
+ТР1: изменение данных
+ТР2: чтение
+ТР1: откат
+В результате в ТР2 будут прочитаны данные, которых фактически нет в БД.
+Для исправления уровень изоляции read committed
+
+
+ТР1
+begin tran
+update tmp set LastName  = 'Букин' where Id = 12
+WAITFOR delay '0:0:5'
+rollback tran
+SELECT * FROM tmp WHERE Id=12
+
+ТР2
+begin tran
+set transaction isolation level read uncommitted --(1) - нарушение 
+--set transaction isolation level read committed --(2) - OK
+SELECT * FROM tmp WHERE Id=12
+commit tran
+
+		Неповторяемое чтение (Несогласованные данные):
+ТР1: читает строку данных
+ТР2: изменяет данные
+ТР1: читает ту же строку, но получает другие данные
+Для исправления уровень изоляции repeatable read или serializable
+
+ТР1:
+begin tran
+set transaction isolation level read committed --(1) - нарушение
+--set transaction isolation level repeatable read --(2) - OK
+SELECT * FROM tmp WHERE Id=12
+WAITFOR delay '0:0:5'
+SELECT * FROM tmp WHERE Id=12
+commit tran
+
+ТР2:
+update tmp set LastName = 'Букин' where Id = 12
+

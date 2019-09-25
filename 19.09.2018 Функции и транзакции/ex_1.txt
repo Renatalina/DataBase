@@ -1,0 +1,6 @@
+SELECT COUNT(P.ID_psg)AS[Кол-во пассажиров]
+FROM dbo.Passenger AS P
+JOIN dbo.Pass_in_trip AS PT 
+ON P.ID_psg=PT.ID_psg
+JOIN dbo.Trip AS T ON PT.trip_no=T.trip_no
+WHERE T.trip_no=7771

@@ -1,0 +1,62 @@
+﻿use Northwind;
+GO
+
+CREATE TRIGGER DiscontinuedProduct
+ON [Order Details] 
+--WITH ENCRYPTION
+FOR INSERT, UPDATE
+AS
+DECLARE @discountinued bit 
+SELECT @discountinued=(SELECT P.Discontinued -- првоеряем если товар уже не поставляется, 
+FROM Products AS P 
+JOIN inserted AS I ON I.ProductID=P.ProductID)
+IF @discountinued=1 --- вот здесь 
+BEGIN
+rollback tran  -- делаем откат 
+raiserror ('No have this products',16,1)
+END
+GO
+
+insert into [Order Details]  (OrderID,ProductID,UnitPrice,Quantity,Discount)
+VALUES (10355,9,12,5,0)
+GO
+
+CREATE PROC TestPrize
+ WITH ENCRYPTION --запрещаем просматривать твою процедуру, или тригерры или все что угодно WITH ENCRYPTION эта штука его никому не покажет
+ AS 
+ SELECT * FROM dbo.Employees
+ GO
+
+ --    2. Создать триггер, который срабатывает при изменении в Products и не позволяет отпускать более половины имеющегося на складе количества определенного товара.
+
+create trigger trCheckProductUnits
+on Products
+for update
+as
+ declare @p as float
+ select @p = (i.UnitsInStock)*100/d.UnitsInStock
+from deleted d join inserted i  on d.ProductID = i.ProductID
+--// d.UnitsInStock – количество на складе
+--// i.UnitsInStock – количество, которое останется на складе после выполнения заказа
+--//@p = (i.UnitsInStock)*100/d.UnitsInStock
+--// количество, которое останется на складе после выполнения заказа, выраженное в //процентах относительно текущего количества
+----------------
+
+print cast(@p as varchar)
+if (@p < 50)
+ begin
+  raiserror('На складе остается меньше половины товара',15,1)
+  rollback tran 
+ end
+ ------------------
+--//начальное количесто 39
+update products set unitsInStock = 30 where ProductID = 1
+select * from products
+--//ОК, т.к. 30/39 > 0.5
+---------------
+--//начальное количесто 30
+update products set unitsInStock = 10 where ProductID = 1
+--//ошибка, т.к. 10/30 < 0.5
+
+create table #dfds --- это временная таблица будет потому что поставили решетку, а здесь когда я, создала, и я отключусь
+(id int)                --- ## таблица пропадет когда последний пользовать от нее отключится 

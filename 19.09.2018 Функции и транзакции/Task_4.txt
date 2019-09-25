@@ -1,0 +1,8 @@
+--Показать  количество  домов,  общую сумму 
+-- и  среднюю  площадь  всех домов, для жителей
+--которые родились в двадцатом веке
+SELECT DISTINCT H.ID,H.Addres,H.Area
+FROM dbo.House H
+JOIN dbo.Occupant O ON H.ID=O.IdHouse
+JOIN dbo.People P ON O.IdPeople=P.ID
+WHERE 

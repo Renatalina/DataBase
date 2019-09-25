@@ -1,0 +1,106 @@
+ALTER AUTHORIZATION ON DATABASE::library TO sa;
+GO
+
+--1.	Показать издательства и сумму страниц по каждому из них. 
+
+SELECT Press.Name AS[Press], SUM(Pages*Quantity) AS [Sum Pages]
+FROM dbo.Books
+LEFT JOIN dbo.Press ON Press.Id=Books.Id_Press
+GROUP BY Press.Name
+GO
+--2.	Показать общее кол-во книг, взятых студентами факультета 'Программирования'. 
+
+SELECT F.Name AS [Name Faculty], COUNT(B.Id) AS Quantity
+FROM dbo.Faculties AS F
+LEFT JOIN dbo.Groups AS G ON G.Id_Faculty=F.Id
+LEFT JOIN dbo.Students AS S ON S.Id_Group=G.Id
+LEFT JOIN dbo.S_Cards AS C ON C.Id_Student=S.Id
+LEFT JOIN dbo.Books AS B ON B.Id=C.Id_Book
+WHERE F.Name='Программирования'
+GROUP BY F.Name;
+GO
+
+--3.	Вывести кол-во книг и сумму страниц этих книг по каждому из издательств 'Питер','Наука' и 'Кудиц-Образ'.
+SELECT Press.Name AS[Press], SUM(Pages*Quantity) AS [Sum Pages], COUNT(Books.Id) AS[Count Books] 
+FROM dbo.Books
+LEFT JOIN dbo.Press ON Press.Id=Books.Id_Press
+WHERE Press.Name LIKE'%Питер%' OR Press.Name LIKE '%Наука%' OR Press.Name LIKE '%Кудиц-Образ%'
+GROUP BY Press.Name
+GO 
+--4.	Вывести информацию о книге по программированию с наибольшим количеством страниц. 
+--5.	Вывести на экран кол-во взятых книг по каждой из кафедр. 
+--6.	Показать издательства и самую старую книгу для каждого из них. 
+
+
+use library;
+GO
+SELECT Press.Name AS 'Название Издательства', Books.Name AS  'Название Книги', PressMin.M AS  'Год издания'
+FROM Press, Books,
+                  (SELECT P.Name AS [Press Name], MIN (YearPress) AS M
+                   FROM Press AS P, Books AS B
+                   WHERE P.Id=B.Id_Press
+                   GROUP BY P.Name) AS PressMin-- так мы сделали новую таблицу PressMin
+WHERE Press.Id=Books.Id_Press AND Press.Name=PressMin.[Press Name] AND Books.YearPress=PressMin.M;
+GO
+
+SELECT P.Name, MIN (YearPress), B.Name
+FROM Press AS P CROSS JOIN Books AS B  --это декартовое произведение (соединяет одну таблицу и другую таблицу)
+-- FROM Press AS P JOIN Books AS B ON P.Id=B.Id_Press -- это тоже самое, что и в верхней строке 
+
+
+
+--JOIN dbo.Press AS P ON P.Id=B.Id_Press
+--WHERE B.YearPress=(SELECT MIN(YearPress), Press.Name FROM dbo.Books LEFT JOIN dbo.Press ON Press.Id=Books.Id_Press GROUP BY Press.Name);
+--GROUP BY P.Name,B.Name, B.YearPress
+GO
+--7.	Показать книги, которые брали и преподаватели и студенты (исключить повторения). 
+--8.	Показать название книги с максимальным кол-вом страниц по каждому из издательств.
+
+SELECT FirstName + ' '+ LastName AS 'Посетитель', Name AS 'название' 
+FROM Students AS S JOIN S_Cards AS SC ON S.Id=SC.Id_Student
+JOIN Books AS B ON B.Id=SC.Id_Book
+WHERE SC.DateIn IS NULL 
+UNION
+SELECT FirstName + ' '+ LastName, Name 
+FROM Teachers AS T JOIN T_Cards AS TC ON TC.Id_Teacher=T.Id 
+JOIN Books AS B ON B.Id=TC.Id_Book
+WHERE TC.DateIN Is NULL
+ORDER BY 1 ASC, 2 DESC
+-------------------------  
+--транзакции
+use library;
+GO 
+
+SELECT * INTO Tmp --создастся еще одна таблица 
+FROM Authors;
+
+
+begin tran   
+update tmp set LastName  = 'Букин' where Id = 12
+WAITFOR delay '0:0:5'
+rollback tran
+SELECT * FROM tmp WHERE Id=12
+
+
+begin tran --другой человек
+--set transaction isolation level read uncommitted --(1) - нарушение 
+set transaction isolation level read committed --(2) - OK
+SELECT * FROM tmp WHERE Id=12
+commit tran
+---- когда работает другой человек
+
+
+------- останавливает выдачу запроса на 5 сек, пока другой пользователь записывает новые данные
+begin tran
+--set transaction isolation level read committed --(1) - нарушение
+set transaction isolation level repeatable read --(2) - OK 
+SELECT * FROM tmp WHERE Id=12
+WAITFOR delay '0:0:5'
+SELECT * FROM tmp WHERE Id=12
+commit tran
+
+update tmp set LastName = 'Букин' where Id = 12  -- второй пользователь
+
+
+
+

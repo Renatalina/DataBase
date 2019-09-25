@@ -1,0 +1,334 @@
+select * into tmp from Authors;--создаем таблицу для выполнения примеров
+
+
+*****************************************************************************			
+
+			Фантомы:
+Появление строк, которые противоречат применяемым операторам update, delete
+ТР1: обновление  (удаление) по условию where
+ТР2: вставка данных, которые противоречат этому условию
+ТР1: чтение данных: обнаруживаются данные, которые противоречат условию where
+Для исправления уровень изоляции serializable
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Alter Table tmp Add Age tinyint; --создание нового поля
+GO
+Declare @age int --заполнение этого поля значениями
+set @age = 1
+while(@age < 19)
+begin
+Update tmp Set Age=80*rand()+20 Where Id=@age;
+ set @age = @age + 1
+end
+
+---------------------------------------------------------------------------
+ТР1: Увеличиваем возраст и добавляем ограничение
+begin tran
+set transaction isolation level read committed --(1) - нарушение
+--set transaction isolation level serializable --(2) - OK
+update tmp set Age = 40 where Age < 40
+waitfor delay '0:0:5'
+alter table tmp add constraint ch_age check (Age >= 40)
+commit tran
+
+SELECT * FROM tmp;
+
+----------------------------------------------------------------------------
+
+ТР2: Вставляем данные, которые противоречат заданному ограничению
+insert into  tmp (FirstName,LastName,Age) values('Вася','Пупкин',35)
+
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+			Потерянные обновления:
+
+Проблема, если TР запомнила поля (все или некоторые) в переменные, потом какое-то время выполнялась,
+и в конце ВСЕ переменные записала обратно в поля (одним update).
+Значения каких-то полей за это время могли изменить другие TР. Но "наша" TР "не знает" об этих изменениях
+и может перезаписать их старыми значениями из своих переменных.
+
+ТР1: считывает строку и запоминает все ее поля в переменные
+ТР2: считывает строку и запоминает все ее поля в переменные
+ТР1: обновляет одно поле строки
+ТР2: обновляет другое поле строки
+Обновления, сделанные в ТР1, теряются.
+
+ТР1:
+declare @lastName varchar(50)
+declare @firstName varchar(50)
+select @lastName = LastName, @firstName = FirstName from tmp where Id = 12
+set @lastName = 'Кулибин'
+waitfor delay '0:0:5'
+update tmp set LastName = @lastName, FirstName = @firstName where Id = 12
+
+-----------------------------------------------------------------------
+
+ТР2:
+declare @lastName varchar(50)
+declare @firstName varchar(50)
+select @lastName = LastName, @firstName = FirstName from tmp where Id = 12
+set @firstName  = 'Федор'
+waitfor delay '0:0:15'
+update tmp set LastName = @lastName, FirstName = @firstName where Id = 12
+
+SELECT * FROM tmp WHERE Id=12
+
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+CREATE TABLE NameAges
+(
+Name varchar(20),
+Age tinyint CHECK (Age>=0)
+);
+
+CREATE TABLE Employee 
+(
+Name varchar(20),
+AvgWage decimal(12,2) CHECK (AvgWage>Rate),
+Rate decimal(12,2)
+);
+
+CREATE TABLE Employee 
+(
+Name varchar(20),
+AvgWage decimal(12,2),
+Rate decimal(12,2),
+CONSTRAINT empl_rate CHECK (AvgWage>Rate)
+);
+
+
+Необходимо создать хранимую процедуру, с помощью которой можно получить список студентов, у которых первая буква в фамилии лежит в диапазоне от А до К.
+
+use library;
+GO
+Create Procedure StudentsLastName @Last varchar(20)
+As
+Select LastName
+From Students
+Where LastName Like @Last
+Order By LastName;
+
+--exec StudentsLastName '[А-К]%';
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+IF OBJECT_ID('StudentsLastName','P') IS NOT NULL
+	DROP PROC StudentsLastName
+
+-------------------------------------------------
+
+IF EXISTS (SELECT name
+           FROM sys.objects
+           WHERE name = 'StudentsLastName' AND type = 'P')
+DROP PROCEDURE StudentsLastName
+GO
+Create Procedure StudentsLastName ...
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+В простом формате на входе после CASE задается в виде выражения значение, которое проверяется на равенство со значением в выражении или выражениях WHEN.
+
+SELECT 'Payment Terms' =  (сроки платежей)
+CASE payterms
+      WHEN 'Net 30' THEN 'Payable 30 days after invoice'   --к оплате в течение 30 дней
+                               --после получения счета-фактуры
+      WHEN 'Net 60' THEN 'Payable 60 days after invoice'   --к оплате в течение 60 дней
+                               --после получения счета-фактуры
+      WHEN 'On invoice' THEN 'Payable upon receipt of invoice'  --к оплате по
+                        --получении счета-фактуры
+      ELSE 'None'
+END,
+title_id
+FROM sales
+ORDER BY payterms
+GO
+
+/////////////////////
+
+Payment Terms                                 title_id 
+----------------------------------------------------
+Payable 30 days after invoice                 PC8888
+Payable 30 days after invoice                 TC3218
+Payable 30 days after invoice                 TC4203
+Payable 30 days after invoice                 TC7777
+Payable 30 days after invoice                 PS2091
+Payable 30 days after invoice                 MC3021
+Payable 30 days after invoice                 BU1111
+Payable 30 days after invoice                 PC1035
+Payable 60 days after invoice                 PS1372
+Payable 60 days after invoice                 PS2106
+Payable 60 days after invoice                 PS3333
+Payable 60 days after invoice                 PS7777
+Payable 60 days after invoice                 BU7832
+Payable 60 days after invoice                 MC2222
+Payable 60 days after invoice                 PS2091
+Payable 60 days after invoice                 BU1032
+Payable 60 days after invoice                 PS2091
+Payable upon receipt of invoice               PS2091
+Payable upon receipt of invoice                 BU1032
+Payable upon receipt of invoice                 BU2075
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+В поисковом формате происходит проверка булева выражения на значение TRUE или FALSE, а не проверка на равенство с каким-либо значением.
+
+SELECT 'Price Range' =
+  CASE  
+     WHEN price BETWEEN .01 AND 10.00 THEN 'Inexpensive: $10.00 or less'    --дешевые
+     WHEN price BETWEEN 10.01 AND 20.00 THEN 'Moderate: $10.01 to $20.00'         --умеренные
+     WHEN price BETWEEN 20.01 AND 30.00 THEN 'Semi-expensive: $20.01 to $30.00'    --не слишком дорогие
+     WHEN price BETWEEN 30.01 AND 50.00 THEN 'Expensive: $30.01 to $50.00'       --дорогие
+     WHEN price IS NULL THEN 'No price listed'          --цена не указана
+     ELSE 'Very expensive!'            --очень дорогие
+   END,
+    title_id
+FROM titles
+ORDER BY price
+GO
+
+/////////////////////////////////////
+
+Price Range                          title_id
+————————————————                        ———— 
+No price listed                      MC3026
+No price listed                        PC9999
+Inexpensive: $10.00 or less          MC3021
+Inexpensive: $10.00 or less          BU2075
+Inexpensive: $10.00 or less          PS2106
+Inexpensive: $10.00 or less          PS7777
+Moderate: $10.01 to $20.00           PS2091
+Moderate: $10.01 to $20.00           BU1111
+Moderate: $10.01 to $20.00           TC4203
+Moderate: $10.01 to $20.00           TC7777
+Moderate: $10.01 to $20.00           BU1032
+Moderate: $10.01 to $20.00           BU7832
+Moderate: $10.01 to $20.00           MC2222
+Moderate: $10.01 to $20.00           PS3333
+Moderate: $10.01 to $20.00           PC8888
+Semi-expensive: $20.01 to $30.00       TC3218
+Semi-expensive: $20.01 to $30.00       PS1372
+Semi-expensive: $20.01 to $30.00       PC1035
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Необходимо написать хранимую процедуру, выводящую на экран книги и количество страниц по указанной категории,
+при этом необходимо указывать направление сортировки: 0 - сортировка результата по цене по убыванию, 1 - по возрастанию.
+
+use library;
+GO
+Create Procedure BooksPages @cat varchar(30),@num int
+
+WITH ENCRYPTION
+
+As
+  if(@num = 0) --по убыванию
+    begin
+      Select Books.Name,Pages
+      From Books Join Categories
+     On Categories.Id = Id_Category 
+     And Categories.Name = @cat
+      Order By Pages Desc;
+    end    
+  else
+    if(@num = 1) --по возрастанию
+      begin
+       Select Books.Name,Pages
+       From Books Join Categories
+       On Categories.Id = Id_Category 
+       And Categories.Name = @cat
+       Order By Pages Asc;
+      end
+
+-- exec BooksPages 'Visual Basic',0;
+
+----------------------------------------------------------------------------
+
+use library;
+GO
+Declare @OrderBY int
+Set @OrderBY = 1
+Select Books.Name,Pages
+From Books Join Categories On Categories.Id = Id_Category 
+Where Categories.Name = 'Visual Basic'
+Order By CASE @OrderBY WHEN 0 THEN Pages END DESC,
+	 CASE @OrderBY WHEN 1 THEN Pages END ASC;
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+CREATE TABLE Goods
+(
+  DateG date, 
+  Name varchar(50),
+  Price money,
+  NumberKG numeric(10, 2)
+)
+GO
+INSERT INTO Goods(DateG,Name,Price,NumberKG) VALUES('2017-03-23','Картофель',4.5,2.3);
+INSERT INTO Goods(DateG,Name,Price,NumberKG) VALUES('2017-03-23','Макароны',16.4,1.7);
+INSERT INTO Goods(DateG,Name,Price,NumberKG) VALUES('2017-03-23','Апельсины',18,2);
+INSERT INTO Goods(DateG,Name,Price,NumberKG) VALUES('2017-04-03','Мука',14,3.3);
+INSERT INTO Goods(DateG,Name,Price,NumberKG) VALUES('2017-04-03','Сахар',12.45,2.5);
+INSERT INTO Goods(DateG,Name,Price,NumberKG) VALUES('2017-04-03','Картофель',4.3,3.5);
+INSERT INTO Goods(DateG,Name,Price,NumberKG) VALUES('2017-04-03','Сахар',12.45,5);
+
+------------------------------------------------------------------------------------------
+
+CREATE FUNCTION fnGetSumm (@name varchar(50), @date date)
+RETURNS numeric(10,2)
+ BEGIN
+  DECLARE @Summ numeric(10,2)
+  SELECT @Summ = Price*NumberKG
+  FROM Goods
+  WHERE Name=@name AND DateG=@date;
+  RETURN @Summ
+ END
+
+--SELECT dbo.fnGetSumm('Картофель', '2017-03-23')
+
+DECLARE @Sum numeric(10,2)
+SELECT @Sum = dbo.fnGetSumm('Картофель', '2017-03-23')
+PRINT @Sum
+
+---------------------------------------------------------------------------
+
+CREATE FUNCTION fnGetPrice()
+RETURNS TABLE
+AS
+ RETURN 
+ (
+  SELECT DateG, Name, Price, NumberKG, Price*NumberKG AS Summ
+  FROM Goods
+ )
+
+--SELECT * FROM fnGetPrice()
+--WHERE NumberKG=2
+
+CREATE FUNCTION fnGetPrice()
+RETURNS TABLE
+AS
+ RETURN 
+ (
+  SELECT DateG, Name, Price, NumberKG, (SELECT dbo.fnGetSumm(G.Name, G.DateG)) AS Summ
+  FROM Goods AS G
+ )
+
+-----------------------------------------------------------------------------
+
+CREATE FUNCTION fnGetPotato(@name varchar(50))
+RETURNS  @res TABLE (DateG date, Name varchar(50), Price money, NumberKG numeric(10, 2))
+AS
+ BEGIN
+  INSERT @res
+  SELECT DateG, Name, Price, NumberKG
+  FROM Goods
+  WHERE Name = @name;
+
+  RETURN
+ END
+
+--SELECT * FROM dbo. fnGetPotato('Картофель')

@@ -1,0 +1,19 @@
+ALTER PROC AmountPassenger
+@tripNumber int,@amount int output
+AS
+BEGIN
+SELECT @amount=(
+SELECT COUNT(P.ID_psg)AS[Кол-во пассажиров]FROM dbo.Passenger AS P
+JOIN dbo.Pass_in_trip AS PT ON P.ID_psg=PT.ID_psg
+JOIN dbo.Trip AS T ON PT.trip_no=T.trip_no
+WHERE T.trip_no=@tripNumber)
+IF @amount=0
+BEGIN
+print N'Нет пассажиров на рейсе '+ cast(@tripNumber as nvarchar(5))
+SELECT N'Нет пассажиров на рейсе '+ cast(@tripNumber as nvarchar(5))
+END
+END
+go
+DECLARE @k int
+exec AmountPassenger 7771,@k output
+print @k

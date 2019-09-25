@@ -1,0 +1,7 @@
+Create table Department
+	(
+		id int primary key identity,
+		DepName nvarchar(50) 
+		unique default(N'пон') not null,
+		Rating int default(100)
+	)

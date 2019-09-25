@@ -1,0 +1,16 @@
+ѕолучение селективности:
+
+DBCC SHOW_STATISTICS ( 'table_name' | 'view_name' , target ) 
+[ WITH [ NO_INFOMSGS ] < option > [ , n ] ]
+< option > 
+
+¬ычисление плотности: 1/(количество различных значений). „ем меньше значение, тем выше селективность.
+
+ѕример:
+create table cities(city varchar(20), country int)
+create index indCountry on cities(country)
+
+insert into cities values('London',1)
+insert into cities values('Parice',2)
+update statistics cities //иначе статистика отсутствует
+DBCC SHOW_STATISTICS ('cities','indCountry')with DENSITY_VECTOR

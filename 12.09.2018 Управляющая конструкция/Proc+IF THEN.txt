@@ -1,0 +1,16 @@
+ALTER PROC FindCraft--Изменили имя
+@craftName varchar(20)--добавили аргумент
+AS
+BEGIN
+IF EXISTS(SELECT Name FROM dbo.Craft WHERE Name=@craftName)
+SELECT C.ID[№], C.Name[Ремесло],C.Description [Описание ремесла]
+FROM dbo.Craft AS C
+WHERE C.Name=@craftName
+ELSE
+select 'Такого ремесла нет в списке' AS[Ошибка]
+END
+go
+exec FindCraft 'СТО'
+exec FindCraft 'Аптека'
+exec FindCraft 'Булочная'
+exec FindCraft 'Парикмахерская'

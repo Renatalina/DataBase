@@ -1,0 +1,48 @@
+use Northwind;
+GO
+SELECT * 
+FROM  dbo.Employees
+GO
+
+CREATE TABLE tst(
+ID int,
+f float
+)
+GO
+
+Declare @cnt int
+set @cnt = 0
+while(@cnt < 100000)
+begin
+ insert tst values(@cnt, rand());
+ set @cnt = @cnt + 1
+end
+GO
+
+select * from tst where ID = 99999 -- много времени мы затратили
+GO
+
+CREATE index indTst on tst(ID)--присвоили индекс  и теперь поиск будет очень быстрый
+GO
+
+DBCC showcontig('tst', 'indTst')--степень заполенения таблици экстендов
+GO
+
+delete from tst where ID%2=0
+GO
+
+DBCC DBRENDEX('tst','indTst')--перестроим индекс, что бы работал быстрей
+GO
+
+SELECT * 
+FROM sys.indexes  --смотрим все индексы во всех таблицах
+GO
+
+declare @a xml 
+set @a='<root>
+<item price="1000">telephone</item>
+<phones>
+<phone=450-85>
+<item price="5000">TV</item>
+
+</root>';

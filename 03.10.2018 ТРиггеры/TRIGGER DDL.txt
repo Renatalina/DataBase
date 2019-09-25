@@ -1,0 +1,31 @@
+Триггеры DDL — это особый вид триггеров, 
+которые срабатывают при выполнении инструкций языка описания данных DDL. 
+Они могут применяться при выполнении административных задач
+ (например, для аудита и регулирования операций в базе данных).
+
+Запрос на создание DDL триггера:
+
+CREATE TRIGGER trigger_name ON { ALL SERVER | DATABASE } 
+[WITH ENCRIPTION | EXECUTE AS <CALLER | SELF | <user>>]
+{ FOR | AFTER } { event_type | event_group } [ ,...n ]
+AS { sql_statement }
+
+Область триггера:
+ALL SERVER – триггер срабатывает при событии на сервере  
+DATABASE  – триггер срабатывает при событии в текущей БД
+event_type – имя события, приводящего к срабатыванию триггера
+event_group – имя группы событий, приводящих к срабатыванию триггера
+Область триггера зависит от события, вызвавшее его срабатывание. 
+Например:
+События уровня БД: CREATE_TABLE, CREATE_USER
+События уровня сервера: CREATE_DATABASE, CREATE_LOGIN
+
+Пример:
+    1. Создание триггера уровня БД,  запрещающего удаление и изменение таблиц
+
+CREATE TRIGGER safety 
+ON DATABASE
+FOR DROP_TABLE, ALTER_TABLE 
+AS 
+   PRINT 'You must disable Trigger "safety" to drop or alter tables!' 
+   ROLLBACK ;

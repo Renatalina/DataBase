@@ -1,0 +1,101 @@
+ALTER AUTHORIZATION ON DATABASE::library TO sa;
+GO
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+--Коля предоставил привилегии Ольге с помощью следующего оператора GRANT с опцией WITH GRANT OPTION:
+GRANT SELECT
+ON table
+TO Olga
+WITH GRANT OPTION
+
+--Затем Оля использовала следующий оператор GRANT для предоставления привилегий Нине:
+GRANT SELECT
+ON table
+TO Nina
+
+--Затем Вася тоже предоставил Ольге привилегии с опцией WITH GRANT OPTION:
+GRANT SELECT
+ON table
+TO Olga
+WITH GRANT OPTION
+
+--После этого Коля запустил оператор REVOKE для Ольги:
+REVOKE SELECT
+ON table
+FROM Olga CASCADE
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+/*добавление пользователя сервера*/
+--exec sp_addlogin @loginame='Test1', @passwd='11111', @defdb='library'
+
+/*удаление пользователя*/
+----EXEC sp_droplogin 'Test1'
+
+/*установка пользователю роли на уровне сервера*/
+--exec sp_addsrvrolemember @loginame='Test1', @rolename='dbcreator'
+
+/*удаление роли пользователя на уровне сервера*/
+----exec sp_dropsrvrolemember @loginame='Test1', @rolename='dbcreator'
+
+/*предоставление пользователю права доступа к БД*/
+USE library
+
+--exec sp_grantdbaccess 'Test1'
+
+/*удаление пользователя из БД*/
+--exec sp_revokedbaccess 'Test1'
+
+/*назначение пользователю роли БД*/
+--exec sp_addrolemember 'Test1','db_datareader'
+
+/*создание роли*/
+--exec sp_addrole @rolename='TestRole'
+--exec sp_addrolemember @rolename='TestRole', @membername = 'Test1'
+
+--GRANT SELECT,INSERT,UPDATE
+--ON Authors
+--TO TestRole
+
+--DENY INSERT
+--ON Authors
+--TO Test1
+
+GRANT CREATE VIEW TO Test1
+
+----------------------------------------------------------
+
+--exec sp_helplogins
+
+----------------------------------------
+
+/*добавление пользователя сервера*/
+
+--CREATE LOGIN Test2 WITH PASSWORD='11111'
+
+/*удаление пользователя*/
+----DROP LOGIN Test2
+
+/*установка пользователю роли на уровне сервера*/
+--ALTER SERVER ROLE dbcreator ADD MEMBER Test2
+
+/*удаление роли пользователя на уровне сервера*/
+----ALTER SERVER ROLE dbcreator DROP MEMBER Test2
+
+/*предоставление пользователю права доступа к БД*/
+--USE library
+
+--CREATE USER Test2
+
+/*удаление пользователя из БД*/
+--DROP USER Test2
+
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Определить права доступа в базе данных library для преподавателей, библиотекарей и администрации.
+Определить возможность библиотекарю не только выдавать книги, а также добавлять и изменять книги, авторов, тематики и пр.
+Необходимо создать представление, хранящее информацию обо всех студентах, которые брали книги.
+Преподавателям дать возможность просматривать, добавлять и изменять список книг, авторов, тематик, а также просматривать представление, определяющее студентов, которые брали книги.
+Администрации дать возможность работать со списками преподавателей, библиотекарей и студентов. Реализовать это через роли.

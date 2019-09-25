@@ -1,0 +1,13 @@
+CREATE TRIGGER DiscontinuedProduct
+ON [order details] 
+FOR INSERT, UPDATE
+AS
+DECLARE @discontinued bit
+SELECT @discontinued=(SELECT P.Discontinued
+FROM Products P JOIN inserted I  ON
+I.ProductID=P.ProductID)
+IF @discontinued=1
+BEGIN
+raiserror ('Продукт больше не поставлется',16,1)
+rollback tran
+END

@@ -1,0 +1,23 @@
+ALTER PROC TransferMoney
+@cardNumber int, @sum money
+AS
+BEGIN
+begin try
+BEGIN TRAN
+update Accounts SET amount=amount-@sum WHERE id=@cardNumber
+update SavAccounts SET amount=amount+ @sum WHERE id=@cardNumber
+print N'Перевод денег на сумму '+ cast( @sum  as nvarchar(10)) +' $ прошел успешно'
+DECLARE @allMoney money
+SELECT @allMoney=(SELECT amount FROM SavAccounts WHERE id=@cardNumber)
+print N'На карте '+ cast(@cardNumber %100 as nvarchar(10)) +' всего '+ cast (@allMoney as nvarchar(12)) +' $'
+COMMIT TRAN
+end try
+BEGIN CATCH
+print N'Транзакция отменена'
+SELECT ERROR_NUMBER(),ERROR_LINE(),ERROR_MESSAGE()
+ROLLBACK TRAN
+END CATCH
+END
+SELECT * FROM dbo.Accounts
+SELECT * FROM dbo.SavAccounts
+exec TransferMoney 1001,400

@@ -1,0 +1,137 @@
+﻿use aero;
+go
+--table 
+--FIO , reis, city
+--in the city
+CREATE FUNCTION ListPassanger
+(@city char(25))
+RETURNS table  -- тип возвращаемого значения , таблица здесь пишем RETURNS
+AS 
+--возвращем объект указанного выше типа return
+return(
+SELECT P.name AS  [FIO], PT.place AS [Place], PT.date AS [Date], T.town_to AS [City]
+FROM  dbo.Passenger AS P
+JOIN dbo.Pass_in_trip AS PT  ON PT.ID_psg = P.ID_psg
+JOIN dbo.Trip AS T ON T.trip_no =PT.trip_no 
+WHERE T.town_to=@city);
+GO --создали эту таблицу, и можем пользоваться ею как захотим
+
+SELECT L.FIO AS [FIO], L.Place AS [Place]
+FROM dbo.ListPassanger('Paris') AS L
+ORDER BY [Date] desc
+GO
+
+
+CREATE VIEW ListPassangerView --это представление
+AS 
+SELECT P.name AS  [FIO], PT.place AS [Place], PT.date AS [Date], T.town_to AS [City]
+FROM  dbo.Passenger AS P
+JOIN dbo.Pass_in_trip AS PT  ON PT.ID_psg = P.ID_psg
+JOIN dbo.Trip AS T ON T.trip_no =PT.trip_no 
+GO
+
+use aero;
+go--делаем Транзакцию 
+BEGIN TRAN 
+INSERT INTO dbo.Company VALUES (6, 'LowCost')--добавляем новые компании в таблицу Компании
+INSERT INTO dbo.Company VALUES (7, 'May')
+SAVE TRAN Step1-- это точка сохранения
+INSERT INTO dbo.Company VALUES (8, 'QatarAir')
+INSERT INTO dbo.Company VALUES (9, 'LowCost2')
+SELECT * FROM dbo.Company                     --просто посмотрим что было до отката
+ROLLBACK TRAN Step1 --откат транзакции, до точки сохранения Step1
+SELECT * FROM dbo.Company                    --- а здесь, посмотрим, что стало после отката 
+
+
+--выдача кредита
+--1 с черным списком не работаем
+--2 если есть не закрытый кредит, тоже не выдаем 
+--3 контролируем покупки по кредитной карте (те что прошли, и те что не прошли)
+
+use master 
+GO 
+CREATE DATABASE CreditBank
+
+use CreditBank
+
+CREATE TABLE BlackList (
+inn int primary key NOT NULL,
+FIO nvarchar (50) NOT NULL, 
+bank  nvarchar (50) NOT NULL
+)
+GO
+
+INSERT INTO BlackList values (465379845,N'Петров Иван Васильевич',N'Приват банк, г.Харьков, №5')
+INSERT INTO BlackList values (231279845,N'Тров Иван Васильевич',N'Приват банк, г.Харьков, №5')
+INSERT INTO BlackList values (341298245,N'Супрунов Наталья Владимировна',N'Приват банк, г.Одесса, №15')
+
+CREATE TABLE CreditList (
+inn int primary key not null,
+cardNumber bigint not null unique check (cardNumber>=1000),
+FIO nvarchar (50) NOT NULL, 
+bank  nvarchar (50) NOT NULL
+default (N'Кредит банк, г.Харьков, №24'),
+creditLimit money not null check (creditLimit>=1000),
+currentLimit money not null default (0), 
+check (currentLimit<=creditLimit)
+)
+GO
+ALTER PROC TakeCredit 
+@inn int, @fio nvarchar (50), @money money
+AS 
+BEGIN 
+--проверяем черные списки 
+if NOT exists (SELECT B.inn FROM dbo.BlackList AS B WHERE B.inn=@inn)
+BEGIN 
+if NOT exists (SELECT B.inn FROM dbo.BlackList AS B WHERE B.inn=@inn)
+BEGIN
+DECLARE @cartNumber bigint -------------------------------------------------------прсваеывем номер карты 
+SELECT @cartNumber=(Select MAX (Cl.cardNumber) FROM dbo.CreditList AS Cl)-- находим максимальный номер карты и прибавляем 1
+If (@cartNumber is null)-- если карта первая, то начинаем счет с 1000
+SET @cartNumber=1000 --- начали здесь счет с 1000
+ELSE 
+SET 
+@cartNumber=@cartNumber+1----------------------------------------------------------- вот здесь, прибавили 1
+INSERT INTO CreditList(inn, FIO, creditLimit, cardNumber) VALUES (@inn, @fio, @money, @cartNumber)
+print N'Заявка напралена на рассмотрение'
+END
+ELSE 
+   BEGIN 
+   print 'y вас есть не закрытый кредит'
+   SELECT Cl.inn, Cl.FIO, Cl.currentLimit, Cl.creditLimit
+   FROM dbo.CreditList AS Cl
+   WHERE Cl.inn=@inn   
+   END
+--print N'Заявка напралена на рассмотрение'
+END
+ELSE 
+           BEGIN
+           print N'Заявка отклонена, мы не работаем с черным списком'
+           SELECT  BL.inn, BL.FIO, BL.bank FROM dbo.BlackList AS BL WHERE  BL.inn=@inn--проверили, есть ли он в черном списке 
+           END 
+END
+GO
+
+exec TakeCredit 341298245, N'Супрунов Наталья Владимировна',20000 -- этот человек из черного списка
+exec TakeCredit 546546854, N'Leon Len Vla',50000 -- тут заявка будет рассмотрена
+
+
+
+CREATE TABLE Buys (
+id int primary key identity,
+cardNumber bigint not null, --номер карты
+shopName nvarchar(50), -- магазин где купил
+total money not null, -- сумма покупки 
+dateIn smalldatetime not null --дата покупки 
+)
+GO
+INSERT INTO Buys VALUES (546546854,N'Klass',7500,GETDATE)
+
+CREATE TABLE BadBuys ( --неудавшиеся покупки 
+id int primary key identity,
+cardNumber bigint not null, --номер карты
+shopName nvarchar(50), -- магазин где купил
+total money not null, -- сумма покупки 
+dateIn smalldatetime not null --дата покупки 
+)
+GO

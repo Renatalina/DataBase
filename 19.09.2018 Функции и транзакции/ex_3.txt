@@ -1,0 +1,21 @@
+BEGIN TRAN
+INSERT INTO dbo.Company VALUES(6,'MAU'),
+(7,'TranAvio')
+CREATE TABLE Accounts(
+id int primary key identity(1000,1),
+fio nvarchar(50) not null,
+amount money default(0)
+)
+go
+INSERT INTO Accounts 
+VALUES(N'Петров Иван Иванович',50000),
+(N'Величко Василий Иванович',150000)
+
+CREATE TABLE SavAccounts(
+id int primary key identity(1000,1),
+amount money default(0) check (amount <=5000)
+)
+INSERT INTO SavAccounts VALUES(0),(0)
+go
+SELECT * FROM dbo.Accounts
+SELECT * FROM dbo.SavAccounts

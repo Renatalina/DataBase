@@ -1,0 +1,10 @@
+SELECT *
+FROM sys.databases
+-----------------------------------
+if not exists (select name from sys.tables where sys.tables.name='books2')
+	BEGIN
+	create table books2(id int primary key,NameBooks varchar(100))
+		Print ' таблица books2 создана';
+	END
+Else
+	Print 'Предупреждение: таблица уже создана!!!';

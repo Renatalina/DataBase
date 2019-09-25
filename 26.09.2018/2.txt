@@ -1,0 +1,7 @@
+CREATE VIEW ListPassenger
+AS
+SELECT P.name ,PT.date ,
+PT.place,T.town_to
+FROM dbo.Passenger P
+JOIN dbo.Pass_in_trip PT ON P.ID_psg=PT.ID_psg
+JOIN dbo.Trip T ON PT.trip_no=T.trip_no

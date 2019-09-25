@@ -1,0 +1,18 @@
+CREATE FUNCTION ListPassengers(@city char(25))
+RETURNS table --указали тип данных
+AS
+--возвращаем объект указанного выше типа
+RETURN(
+SELECT P.name [FIO],PT.date [Date],
+PT.place[Place],T.town_to [City]
+FROM dbo.Passenger AS P
+JOIN dbo.Pass_in_trip PT ON P.ID_psg=PT.ID_psg
+JOIN dbo.Trip AS T ON PT.trip_no=T.trip_no
+WHERE T.town_to =@city);
+go
+SELECT *
+FROM dbo.ListPassengers('Paris') 
+go
+SELECT L.FIO,L.Place
+FROM dbo.ListPassengers('Paris') L
+ORDER BY [Date] desc

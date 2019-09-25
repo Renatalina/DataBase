@@ -1,0 +1,24 @@
+DECLARE @k int,@name varchar(20);
+--задали значение
+SET @k=0;
+SET @name='Group'
+--вывели
+--а)
+SELECT @k AS[@k],@name AS[@name]
+--б)
+print  cast (@k as varchar(20))+' '+ @name
+print  convert(varchar(20),@k)+' '+ @name
+print  @k
+print @name
+----------------------------------------------------
+DECLARE @k int
+--          --запрос в (T-SQL)
+SELECT @k=( SELECT COUNT(*)FROM dbo.Craft )
+--вывели
+--а)
+SELECT @k AS[Количество ремесел]
+--б)
+print  cast (@k as varchar(20))
+print  convert(varchar(20),@k)
+print  @k
+go

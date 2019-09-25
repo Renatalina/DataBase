@@ -1,0 +1,30 @@
+    2. Создать триггер, который срабатывает при изменении в Products и не позволяет отпускать более половины имеющегося на складе количества определенного товара.
+
+create trigger trCheckProductUnits
+on Products
+for update
+as
+ declare @p as float
+ select @p = (i.UnitsInStock)*100/d.UnitsInStock
+from deleted d join inserted i  on d.ProductID = i.ProductID
+// d.UnitsInStock – количество на складе
+// i.UnitsInStock – количество, которое останется на складе после выполнения заказа
+//@p = (i.UnitsInStock)*100/d.UnitsInStock
+// количество, которое останется на складе после выполнения заказа, выраженное в //процентах относительно текущего количества
+
+
+print cast(@p as varchar)
+if (@p < 50)
+ begin
+  raiserror('На складе остается меньше половины товара',15,1)
+  rollback tran 
+ end
+
+//начальное количесто 39
+update products set unitsInStock = 30 where ProductID = 1
+select * from products
+//ОК, т.к. 30/39 > 0.5
+
+//начальное количесто 30
+update products set unitsInStock = 10 where ProductID = 1
+//ошибка, т.к. 10/30 < 0.5

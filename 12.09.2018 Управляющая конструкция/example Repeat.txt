@@ -1,0 +1,25 @@
+go
+--example 1
+--CREATE PROC AllCrafts
+--AS
+--BEGIN
+--SELECT C.ID[№], C.Name[Ремесло],
+--C.Description [Описание ремесла]
+-- FROM dbo.Craft AS C
+--END
+--go
+--exec AllCrafts
+--example 2
+--CREATE PROC FindCraft--Изменили имя
+--@craftName varchar(20)--добавили аргумент
+--AS
+--BEGIN
+--SELECT C.ID[№], C.Name[Ремесло],C.Description [Описание ремесла]
+--FROM dbo.Craft AS C
+--WHERE C.Name=@craftName--добавили условие
+--END
+--go
+--exec FindCraft 'СТО'
+--exec FindCraft 'Аптека'
+--exec FindCraft 'Булочная'
+--exec FindCraft 'Парикмахерская'

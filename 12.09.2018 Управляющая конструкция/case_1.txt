@@ -1,0 +1,8 @@
+SELECT C.ID AS[№],
+[Четное или нечетное ремесло]=case C.ID%2
+when 0 then 'четное ремесло'
+when 1 then 'нечетное ремесло'
+end,
+ C.Name AS[Ремесло],
+C.Description [Описание ремесла]
+ FROM dbo.Craft AS C

@@ -1,0 +1,25 @@
+--ДЗ
+--нужно контролировать все продажи сотрудника №5 и его подчиненных
+--и нам нужно записывать в отдельную таблицу информацию о товарах, которые они продают 
+--(название продукта, поставщик продукта, количество)
+use Northwind; 
+GO
+CREATE TRIGGER TraderProduct
+ON Products 
+--WITH ENCRYPTION
+FOR INSERT
+AS
+DECLARE @discountinued bit 
+SELECT @discountinued=(SELECT P.Discontinued -- првоеряем если товар уже не поставляется, 
+FROM Products AS P 
+JOIN inserted AS I ON I.ProductID=P.ProductID
+JOIN [Order Details] AS OD ON OD.ProductID=P.ProductID
+JOIN Orders AS O ON O.OrderID=OD.OrderID
+JOIN Employees AS E ON E.EmployeeID=O.EmployeeID
+WHERE E.EmployeeID=8)
+IF @discountinued=1 --- вот здесь 
+BEGIN
+rollback tran  -- делаем откат 
+raiserror ('No have this products',16,1)
+END
+GO

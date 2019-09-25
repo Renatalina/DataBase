@@ -1,0 +1,160 @@
+﻿--use aero; 
+
+SELECT COUNT (P.ID_psg) AS [Количество пассажиров]
+FROM dbo.Passenger AS P
+INNER JOIN  Pass_in_trip AS PT ON PT.ID_psg=P.ID_psg 
+INNER JOIN Trip AS T ON T.trip_no=PT.trip_no
+WHERE T.trip_no=7771
+GO
+-------------------------------------
+CREATE PROC AmountPassenger
+@tripNumber int, @amount int output 
+AS 
+BEGIN 
+SELECT @amount=(
+SELECT COUNT (P.ID_psg) AS [Количество пассажиров]
+FROM dbo.Passenger AS P
+INNER JOIN  Pass_in_trip AS PT ON PT.ID_psg=P.ID_psg 
+INNER JOIN Trip AS T ON T.trip_no=PT.trip_no
+WHERE T.trip_no=@tripNumber)
+IF @amount=0 
+BEGIN
+print 'No have passenger on this'+ cast (@amount as nvarchar(20))
+SELECT 'No have passenger on this'+ cast (@amount as nvarchar(20))
+END
+END
+go
+
+DECLARE @k int 
+exec AmountPassenger 7771, @k output
+
+-------------------------------------------
+ALTER PROC AmountPassenger
+@tripNumber int, @amount int output 
+AS 
+BEGIN 
+SELECT @amount=(
+SELECT COUNT (P.ID_psg) AS [Количество пассажиров]
+FROM dbo.Passenger AS P
+INNER JOIN  Pass_in_trip AS PT ON PT.ID_psg=P.ID_psg 
+INNER JOIN Trip AS T ON T.trip_no=PT.trip_no
+WHERE T.trip_no=@tripNumber)
+IF @amount=0 
+BEGIN
+print 'No have passenger on this'+ cast (@tripNumber as nvarchar(20))
+SELECT 'No have passenger on this'+ cast (@tripNumber as nvarchar(20))
+END
+END
+go
+
+
+DECLARE @k int 
+exec AmountPassenger 7771, @k output
+print @k
+
+--------------------------------------------------------------------------
+CREATE FUNCTION AmountP(@tripNumber int)
+RETURNS int 
+AS 
+BEGIN 
+DECLARE @amount int 
+SELECT @amount=(
+SELECT COUNT (P.ID_psg) AS [Количество пассажиров]
+FROM dbo.Passenger AS P
+INNER JOIN  Pass_in_trip AS PT ON PT.ID_psg=P.ID_psg 
+INNER JOIN Trip AS T ON T.trip_no=PT.trip_no
+WHERE T.trip_no=@tripNumber)
+return @amount
+END
+go
+
+-----------------------------------------------------------------------------
+use SantaBelinda;
+CREATE FUNCTION CountWihtoutHouse ()
+RETURNS int
+AS 
+BEGIN 
+DECLARE @countPeople int
+SELECT @countPeople=(
+SELECT COUNT (P.ID)
+FROM dbo.People AS P
+LEFT JOIN Occupant AS O ON O.IdPeople=P.ID
+WHERE O.IdPeople is null
+)
+return @countPeople
+END
+GO
+
+SELECT dbo.CountWihtoutHouse ()
+
+----------------------------------------------------------------------------
+use aero;
+BEGIN TRAN 
+INSERT INTO dbo.Company
+VALUES (6,'MAU'),(7,'IranAvoo')
+SELECT C.ID_comp, C.name 
+FROM dbo.Company AS C
+
+ROLLBACK TRAN
+SELECT C.ID_comp, C.name
+FROM dbo.Company AS C
+
+---------------------------------------
+use aero;
+CREATE TABLE Accounts (
+id int primary key identity (1000,1),
+fio nvarchar (50) not null,
+amount money default(0)
+
+);
+go
+INSERT INTO Accounts 
+VALUES (N'Петров Иван Иванович', 50000),(N'Величко Василий Иванович',150000); 
+go
+CREATE TABLE SavAccounts (
+id int primary key identity (1000,1),
+amount money default(0) CHECK (amount <=5000)
+);
+go
+INSERT INTO SavAccounts VALUES(0),(0)
+go
+SELECT * FROM dbo.Accounts
+SELECT * FROM dbo.SavAccounts
+go
+
+DECLARE @sum money
+SET @sum=2000
+update Accounts SET amount=amount-@sum WHERE id=1000
+update SavAccounts SET amount=amount+@sum WHERE id=1000
+go
+ALTER PROC TransferMoney
+@cardNumber int, @sum money
+AS 
+BEGIN 
+BEGIN try
+BEGIN TRAN 
+update Accounts SET amount=amount-@sum WHERE id=@cardNumber
+update SavAccounts SET amount=amount+@sum WHERE id=@cardNumber
+print N'Transaction on'+ cast (@sum as nvarchar(4)) +' is ending'
+DECLARE @allMoney money
+SELECT @allMoney=(Select amount FROM SavAccounts WHERE id=@cardNumber)
+print N'Money in your card '+cast (@cardNumber%100 as nvarchar(4))+ ' '+cast (@allMoney as nvarchar(12))+'$'
+COMMIT TRAN 
+return 1 
+end try
+BEGIN CATCH
+print N'Transaction is cancel'
+SELECT ERROR_LINE(), ERROR_MESSAGE(), ERROR_NUMBER()
+ROLLBACK TRAN
+END CATCH
+END
+GO
+
+exec TransferMoney 1001,2000.00
+
+DECLARE @k int 
+SET @k=3400
+SELECT @k%100
+
+
+

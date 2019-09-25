@@ -1,0 +1,21 @@
+SELECT P.ID,P.Surname + ' '+P.Name [FIO],
+O.IdPeople
+FROM dbo.People P 
+LEFT JOIN dbo.Occupant O ON P.ID=O.IdPeople
+WHERE O.IdPeople is null
+----------------------------------------
+CREATE FUNCTION WithOutAddress()
+returns int
+AS
+BEGIN
+DECLARE @k int
+SELECT @k=(
+SELECT COUNT(P.ID)
+FROM dbo.People P 
+LEFT JOIN dbo.Occupant O ON P.ID=O.IdPeople
+WHERE O.IdPeople is null
+)
+return @k
+END
+go
+SELECT dbo.WithOutAddress()

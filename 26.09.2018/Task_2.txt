@@ -1,0 +1,38 @@
+ALTER PROC TakeCredit
+@inn int,@fio nvarchar(50),@money money
+AS
+--проверяем черные списки
+if NOT EXISTS (SELECT BL.inn FROM dbo.BlackList BL WHERE BL.inn=@inn)
+BEGIN
+--проверяем есть ли выданные кредиты
+	if NOT EXISTS (SELECT CL.inn FROM dbo.CreditsList CL WHERE CL.inn=@inn)
+		BEGIN
+--если кредитов нет, то генерируем номер карты
+		DECLARE @cardNumber bigint
+--определяем номер последней выданной карты
+		SELECT @cardNumber=(SELECT MAX(CL.cardNumber)FROM dbo.CreditsList CL)
+--если это первый кредит, отделение новое
+--то записей в таблице нет
+		if (@cardNumber is null)
+		SET @cardNumber=1000000000000000 --первый номер карты будет равен
+		ELSE 
+		SET @cardNumber= @cardNumber + 1 --каждый следующий на 1 больше
+--добавляем в список выданных кредитов
+		INSERT INTO dbo.CreditsList(inn,cardNumber,fio,creditLimit)
+		VALUES (@inn,@cardNumber,@fio,@money)
+		print 'заявка на кредит одобрена'
+
+	END
+ELSE
+		BEGIN
+		print 'у вас есть незакрытый кредит'
+		SELECT CL.inn, CL.fio,CL.currentLimit,CL.creditLimit
+		 FROM dbo.CreditsList CL
+		 WHERE CL.inn=@inn
+		END
+END
+ELSE
+BEGIN
+print N'заявка отклонена, мы не работаем с черным списком'
+SELECT BL.inn,BL.fio,BL.bank FROM dbo.BlackList BL WHERE BL.inn=@inn
+END

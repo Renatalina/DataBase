@@ -1,0 +1,12 @@
+use aero
+go
+BEGIN TRAN 
+INSERT INTO dbo.Company VALUES(9,'Loucost 1')
+INSERT INTO dbo.Company VALUES(10,'Loucost 2')
+SAVE TRAN Step1 --точка сохранения
+INSERT INTO dbo.Company VALUES(11,'Loucost 11')
+INSERT INTO dbo.Company VALUES(12,'Loucost 12')
+SELECT *FROM dbo.Company 
+ROLLBACK TRAN Step1 --откат до точки сохранения
+
+SELECT *FROM dbo.Company 
